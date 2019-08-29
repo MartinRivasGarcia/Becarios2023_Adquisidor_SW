@@ -1,0 +1,27 @@
+#######################  ADS1294  #################################################
+
+Datasheet hoja 17: NOTE: SPI settings are CPOL = 0 and CPHA = 1.
+Datasheet hoja 63: if SCLK >= 4 MHz the serial port can be programmed to use multiple-byte transfers because the transfer time < 4 tCLK.
+Datasheet hoja 53: The data format for each channel data is twos complement and MSB first
+
+WAKEUP Command: Any subsequent command must be sent after 4 tCLK cycles
+RESET Command: Any subsequent command must be sent after 18 tCLK cycles
+START/STOP Command: Tie the START pin low to control conversions by command. Keep the START pin low until the STOP command is issued
+RDATAC/SDATAC Command: enables the output of conversion data on each DRDY without the need to issue subsequent read data opcodes. It is the default mode on power up and reset. Subsequent data retrieval SCLKs or the SDATAC opcode command must wait at least 4 tCLK.
+
+##########################################################################
+############  REGISTERS  ###############
+NAME		ADDRESS		VALUE		Variable (v)
+CONFIG1		01h		11000vvv	Output Data Rate
+CONFIG2		02h		00xv0vvv	Test signal
+CONFIG3		03h		01v01100	Reference Voltage
+CHnSET		05h to 0Ch	v0010vvv	Config de Canales
+RLD_SENSP	0Dh		00000000	
+RLD_SENSN	0Eh		00000000
+LOFF_SENSP	0Fh		00000000
+LOFF_SENSN	0Fh		00000000
+GPIO		14h		xxxxxxxx	4GPIO: I/O y Valor
+PACE		15h		00000000
+CONFIG4		17h		xxx00000	bit3 Continuous Conversion
+WCT1		18h		00000000
+WCT2		19h		00000000

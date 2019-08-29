@@ -1,0 +1,89 @@
+######## Links ########
+https://beagleboard.org/black
+https://stackoverflow.com/questions/49383276/how-to-write-to-a-file-in-sd-card-if-one-is-inserted?noredirect=1&lq=1
+https://stackoverflow.com/questions/43116/how-can-i-run-an-external-program-from-c-and-parse-its-output
+https://cdn-learn.adafruit.com/downloads/pdf/ssh-to-beaglebone-black-over-usb.pdf
+https://github.com/cdsteinkuehler/beaglebone-universal-io
+https://elinux.org/BeagleBone_Black_Enable_SPIDEV
+https://www.linux.com/learn/how-access-chips-over-spi-beaglebone-black
+https://deeplyembedded.org/spi-library-beaglebone/
+https://groups.google.com/forum/#!topic/beagleboard/RShjePl0noY
+https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/spi/spidev.h
+
+------------------------------------------------------------------------------------
+
+######## beaglebone-universal-io ( Seteo de Pines ) ########
+-Device tree overlay and support scripts for using most available hardware I/O on the BeagleBone without editing dts files or rebuilding the kernel.
+-https://github.com/cdsteinkuehler/beaglebone-universal-io
+-Comandos para la consola para seleccionar el modo de operacion del pin:
+
+# Configure a pin for a specific mode
+config-pin P8.07 timer
+
+# Configure a pin as gpio output and setting the state
+config-pin P8.07 hi
+config-pin P8.07 low
+
+# Configure a pin as a gpio input
+config-pin P8.07 in
+
+# List the valid modes for a specific pin
+config-pin -l P8.07
+
+# Query the status of a pin (note the appropriate universal cape
+# must be loaded for this to work)
+config-pin -q P8.07
+
+# Complete usage details
+config-pin -h
+
+PARA SPI0 (P9.18 = spi0_d1, P9.21 = spi0_d0):
+config-pin P9.17 spi_cs
+config-pin P9.18 spi
+config-pin P9.21 spi
+config-pin P9.22 spi_sclk
+
+-------------------------------------------------------------------------------------
+
+######## SPI BBB ########
+-AM335x Reference Manual Hoja 4549:  Phase and Polarity Combinations
+Polarity (POL) Phase (PHA) SPI  Mode
+	0 	    0 		mode0
+	0 	    1 		mode1
+	1 	    0 		mode2
+	1 	    1 		mode3
+
+-spi_ioc_transfer (Estructura para transferencias de SPI):
+Leer: https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/spi/spidev.h
+
+-------------------------------------------------------------------------------------
+
+######## GPIO BBB ########
+-En el directorio /sys/class/gpio hay una carperta por cada pin gpio. Dentro de la carpeta 
+de un pin particular hay distintos archivos para manejar direccion, valor, flanco, etc.
+-Voy a usar el GPIO_49 = P9.23
+
+-------------------------------------------------------------------------------------
+
+######## Compartir internet a traves de USB ########
+
+# Desde linux:
+https://elementztechblog.wordpress.com/2014/12/22/sharing-internet-using-network-over-usb-in-beaglebone-black/
+-In the BBB console type the following
+ifconfig usb0 192.168.7.2
+route add default gw 192.168.7.1
+
+-In the linux console of host system type
+sudo su
+#wlan0 is my internet facing interface, eth5 is the BeagleBone USB connection
+ifconfig eth5 192.168.7.1
+iptables --table nat --append POSTROUTING --out-interface wlan0 -j MASQUERADE
+iptables --append FORWARD --in-interface eth5 -j ACCEPT
+echo 1 > /proc/sys/net/ipv4/ip_forward
+
+-Incase network not accessible then type the following in BBB terminal
+echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+
+#Desde Windows:
+
+-------------------------------------------------------------------------------------
