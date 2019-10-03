@@ -6,6 +6,16 @@
  */
 
 #include "ADS1294.h"
+#include <stdint.h>
+
+//-----  Prototipos  ---------//
+void ADS1294_Read(uint8_t *, uint8_t);
+void ADS1294_SingleRead(uint8_t *, uint8_t);
+void ADS1294_SendCommand(uint8_t);
+void ADS1294_WriteRegister(uint8_t, uint8_t);
+uint8_t ADS1294_ReadRegister(uint8_t);
+void ADS1294_init(void);
+
 
 //-----  General  ---------//
 #define HIGH 	1
@@ -14,7 +24,7 @@
 #define OFF 	0
 
 //-----  Beagle Bone Black  ---------//
-#define SPI_MODE1	1	// SPI settings are CPOL = 0 and CPHA = 1
+#define SPI_MODE1set	1	// SPI settings are CPOL = 0 and CPHA = 1
 
 //-----  CONFIG1 Register  ---------//
 #define CONFIG1_DEFAULT		0xC0	// High Resolution Mode = ON, Multiple ReadBack = ON, CLK_OUT = OFF, Output Data rate = 32kSPS
@@ -63,6 +73,7 @@
 #define PACE_DEFAULT		0
 #define WCT1_DEFAULT		0
 #define WCT2_DEFAULT		0
+#define RESP_DEFAULT		0
 
 //-----  GPIO Register  ---------//
 #define GPIO_DEFAULT	0x0F	// Los 4 GPIO como entradas (conectar los pines a masa)
@@ -78,4 +89,7 @@
 //-----  CONFIG4 Register  ---------//
 #define CONFIG4_DEFAULT		0x00	// Continuous Conversion = ON, WCT to RLD connection = OFF, Lead-off comparators disabled
 #define SINGLE_SHOT			0x08	// Bit3 de CONFIG4 en 1 => Single-shot mode, en 0 Continuous conversion mode
+
+
+
 
