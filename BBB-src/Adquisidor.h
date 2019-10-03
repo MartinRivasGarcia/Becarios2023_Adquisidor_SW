@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 //-----  Prototipos  ---------//
+int32_t Config_BBB_SPI_Pins();
 void ADS1294_Read(uint8_t *, uint8_t);
 void ADS1294_SingleRead(uint8_t *, uint8_t);
 void ADS1294_SendCommand(uint8_t);

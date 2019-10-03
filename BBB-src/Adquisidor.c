@@ -8,6 +8,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include "Adquisidor.h"
 #include "SPI.h"
@@ -18,7 +19,9 @@ uint32_t ADS1294_Status;
 
 int32_t main(int32_t argc, int8_t const *argv[])
 {
-	
+	if ( Config_BBB_SPI_Pins() < 0)	//Configuro los pines de la BBB para SPI
+		return 0;
+
 	// Intento tomar el driver de SPI de la beagle
 	if( SPI_DEV1_init(SPIDEV_BYTES_NUM, SPIDEV1_BUS_SPEED_HZ, SPI_SS_LOW, SPIDEV_DELAY_US, SPIDEV_DATA_BITS_NUM, SPI_MODE1set) == -1 )
 	{
@@ -34,6 +37,36 @@ int32_t main(int32_t argc, int8_t const *argv[])
 
 	//Leer();	// Reubicar
 
+	return 0;
+}
+
+/**
+ * @brief      Utilizo la funcion system para correr el comando de consola config-pin y setear los pines de la BBB como SPI
+ *
+ * @return     Devuelve -1 en caso de error. Devuelve 0 en configuracion exitosa.
+ */
+int32_t Config_BBB_SPI_Pins()
+{
+	if( system("config-pin P9.17 spi_cs") < 0 )
+	{
+		printf("Error corriendo en consola el comando: config-pin P9.17 spi_cs\n");
+		return -1;
+	}
+	if( system("config-pin P9.18 spi") < 0 )
+	{
+		printf("Error corriendo en consola el comando: config-pin P9.18 spi\n");
+		return -1;
+	}
+	if( system("config-pin P9.21 spi") < 0 )
+	{
+		printf("Error corriendo en consola el comando: config-pin P9.21 spi\n");
+		return -1;
+	}
+	if( system("config-pin P9.22 spi_sclk") < 0 )
+	{
+		printf("Error corriendo en consola el comando: config-pin P9.22 spi_sclk\n");
+		return -1;
+	}
 	return 0;
 }
 
