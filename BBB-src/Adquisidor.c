@@ -10,6 +10,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <stdint.h>
 #include "Adquisidor.h"
 #include "SPI.h"
 
@@ -19,6 +20,8 @@ uint32_t ADS1294_Status;
 
 int32_t main(int32_t argc, int8_t const *argv[])
 {
+    unsigned char Rx_aux = 0;
+
 	if ( Config_BBB_SPI_Pins() < 0)	//Configuro los pines de la BBB para SPI
 		return 0;
 
@@ -29,10 +32,27 @@ int32_t main(int32_t argc, int8_t const *argv[])
 		return 0;
 	}
 	printf("Inicializacion de spidev1.0 exitosa\n");
-
-	ADS1294_init();	// Inicializo los registros del ADS1294 con sus valores por defecto
-
     
+
+    //ADS1294_SendCommand(ADS1294_SDATAC);
+    
+	//ADS1294_init();	// Inicializo los registros del ADS1294 con sus valores por defecto
+
+    //ADS1294_SendCommand(ADS1294_SDATAC);
+
+    ADS1294_SendCommand(ADS1294_RESET);	// Primero reseteo el ADC
+	usleep(100);						// Despues de un comando de reset hay que esperar aprox 9us (18 tCLK)
+   
+    ADS1294_SendCommand(ADS1294_SDATAC);
+
+    Rx_aux = ADS1294_ReadRegister(ADS1294_CONFIG1);
+    printf("Valor de Registro CONFIG1: %u\n",Rx_aux);
+    ADS1294_WriteRegister(ADS1294_CONFIG1,CONFIG1_DEFAULT);
+    Rx_aux = ADS1294_ReadRegister(ADS1294_CONFIG1);
+    
+    printf("Valor de Registro CONFIG1: %u\n",Rx_aux);    
+
+
 	//ADS1294_SendCommand(ADS1294_START);	// Requiere que el pin START este en estado bajo
 
 	//Leer();	// Reubicar
@@ -108,7 +128,7 @@ void ADS1294_SingleRead(uint8_t * Rx, uint8_t NumberOfBytes)
  */
 void ADS1294_SendCommand(uint8_t Opcode)
 {
-	if ( SPIDEV1_single_transfer(Opcode) == 0 )
+	if ( SPIDEV1_single_transfer(Opcode) >= 0 )
     	printf("(ADS1294_command)spidev1.0: Transaction Complete\r\n");
     else
     	printf("(ADS1294_command)spidev1.0: Transaction Failed\r\n");
@@ -122,11 +142,12 @@ void ADS1294_SendCommand(uint8_t Opcode)
  */
 void ADS1294_WriteRegister(uint8_t Reg, uint8_t valor)
 {
+    unsigned char Tx[3];
 	uint8_t NumberOfBytes = 3;
-	Tx_spi[0] = ADS1294_WREG_1 | Reg;		// Agrego direccion del registro en el primer opcode
-	Tx_spi[1] = ADS1294_WREG_2 | (1 - 1);	// Agrego cantidad de registros a escribir en el segundo opcode
-	Tx_spi[2] = valor;						// Contenido a escribir al registro
-	if ( SPIDEV1_transfer(Tx_spi, NULL, NumberOfBytes) == 0 )
+	Tx[0] = ADS1294_WREG_1 | Reg;		// Agrego direccion del registro en el primer opcode
+	Tx[1] = ADS1294_WREG_2 | (1 - 1);	// Agrego cantidad de registros a escribir en el segundo opcode
+	Tx[2] = valor;						// Contenido a escribir al registro
+	if ( SPIDEV1_transfer(Tx, NULL, NumberOfBytes) == 0 )
     	printf("(ADS1294_WriteRegister)spidev1.0: Transaction Complete\r\n");
     else
     	printf("(ADS1294_WriteRegister)spidev1.0: Transaction Failed\r\n");
@@ -141,15 +162,17 @@ void ADS1294_WriteRegister(uint8_t Reg, uint8_t valor)
  */
 uint8_t ADS1294_ReadRegister(uint8_t Reg)
 {
+    unsigned char Tx[3];
+    unsigned char Rx[3];
 	uint8_t NumberOfBytes = 3;
-	Tx_spi[0] = ADS1294_RREG_1 | Reg;		// Agrego direccion del registro en el primer opcode
-	Tx_spi[1] = ADS1294_RREG_2 | (1 - 1);	// Agrego cantidad de registros a escribir en el segundo opcode
-	Tx_spi[2] = 0;		// El tercer byte es para leer el valor del registro. Keep DIN low for the entire read operation
-	if ( SPIDEV1_transfer(Tx_spi, Rx_spi, NumberOfBytes) == 0 )
+	Tx[0] = ADS1294_RREG_1 | Reg;		// Agrego direccion del registro en el primer opcode
+	Tx[1] = ADS1294_RREG_2 | (1 - 1);	// Agrego cantidad de registros a escribir en el segundo opcode
+	Tx[2] = 0;		// El tercer byte es para leer el valor del registro. Keep DIN low for the entire read operation
+	if ( SPIDEV1_transfer(Tx, Rx, NumberOfBytes) == 0 )
     	printf("(ADS1294_ReadRegister)spidev1.0: Transaction Complete\r\n");
     else
     	printf("(ADS1294_ReadRegister)spidev1.0: Transaction Failed\r\n");
-    return Rx_spi[2];
+    return Rx[2];
 }
 
 /**
@@ -158,51 +181,54 @@ uint8_t ADS1294_ReadRegister(uint8_t Reg)
 void ADS1294_init(void)
 {
 	uint8_t NumberOfBytes = 0;
+    uint8_t Txa[10];
+    uint8_t Txb[7];
+    uint8_t Txc[8];
 
 	ADS1294_SendCommand(ADS1294_RESET);	// Primero reseteo el ADC
 	usleep(100);						// Despues de un comando de reset hay que esperar aprox 9us (18 tCLK)
-
+    ADS1294_SendCommand(ADS1294_SDATAC);
 	// Inicialmente solo escribo los registros y no leo nada. Chequear que anda con NULL (deberia)
 	// Necesito 10 bytes
 	NumberOfBytes = 10;	// = Cantidad De Registros + 2 (el comando WriteRegister requiere 2 bytes)
-	Tx_spi[0] = ADS1294_WREG_1 | ADS1294_CONFIG1;	// Escribo registros a partir del registro CONFIG1
-	Tx_spi[1] = ADS1294_WREG_2 | (8 - 1);	// Voy a escribir 8 registros
-	Tx_spi[2] = CONFIG1_DEFAULT;
-	Tx_spi[3] = CONFIG2_DEFAULT;
-	Tx_spi[4] = CONFIG3_DEFAULT;
-	Tx_spi[5] = LOFF_DEFAULT;
-	Tx_spi[6] = CHnSET_DEFAULT;	// Inicialmente configuro por igual los 4 canales
-	Tx_spi[7] = CHnSET_DEFAULT;
-	Tx_spi[8] = CHnSET_DEFAULT;
-	Tx_spi[9] = CHnSET_DEFAULT;
-	if ( SPIDEV1_transfer(Tx_spi, NULL, NumberOfBytes) == 0 )
+	Txa[0] = ADS1294_WREG_1 | ADS1294_CONFIG1;	// Escribo registros a partir del registro CONFIG1
+	Txa[1] = ADS1294_WREG_2 | (8 - 1);	// Voy a escribir 8 registros
+	Txa[2] = CONFIG1_DEFAULT;
+	Txa[3] = CONFIG2_DEFAULT;
+	Txa[4] = CONFIG3_DEFAULT;
+	Txa[5] = LOFF_DEFAULT;
+	Txa[6] = CHnSET_DEFAULT;	// Inicialmente configuro por igual los 4 canales
+	Txa[7] = CHnSET_DEFAULT;
+	Txa[8] = CHnSET_DEFAULT;
+	Txa[9] = CHnSET_DEFAULT;
+	if ( SPIDEV1_transfer(Txa, NULL, NumberOfBytes) == 0 )
     	printf("(ADS1294_init)spidev1.0: Transaction 1 Complete\r\n");
     else
     	printf("(ADS1294_init)spidev1.0: Transaction 1 Failed\r\n");
 
     NumberOfBytes = 7;	// = Cantidad De Registros + 2 (el comando WriteRegister requiere 2 bytes)
-	Tx_spi[0] = ADS1294_WREG_1 | ADS1294_RLD_SENSP;	// Escribo registros a partir del registro RLD_SENSP
-	Tx_spi[1] = ADS1294_WREG_2 | (5 - 1);	// Voy a escribir 5 registros
-	Tx_spi[2] = RLD_SENSP_DEFAULT;
-	Tx_spi[3] = RLD_SENSN_DEFAULT;
-	Tx_spi[4] = LOFF_SENSP_DEFAULT;
-	Tx_spi[5] = LOFF_SENSN_DEFAULT;
-	Tx_spi[6] = LOFF_FLIP_DEFAULT;	// Inicialmente configuro los 4 canales por igual
-	if ( SPIDEV1_transfer(Tx_spi, NULL, NumberOfBytes) == 0 )
+	Txb[0] = ADS1294_WREG_1 | ADS1294_RLD_SENSP;	// Escribo registros a partir del registro RLD_SENSP
+	Txb[1] = ADS1294_WREG_2 | (5 - 1);	// Voy a escribir 5 registros
+	Txb[2] = RLD_SENSP_DEFAULT;
+	Txb[3] = RLD_SENSN_DEFAULT;
+	Txb[4] = LOFF_SENSP_DEFAULT;
+	Txb[5] = LOFF_SENSN_DEFAULT;
+	Txb[6] = LOFF_FLIP_DEFAULT;	// Inicialmente configuro los 4 canales por igual
+	if ( SPIDEV1_transfer(Txb, NULL, NumberOfBytes) == 0 )
     	printf("(ADS1294_init)spidev1.0: Transaction 2 Complete\r\n");
     else
     	printf("(ADS1294_init)spidev1.0: Transaction 2 Failed\r\n");
 
     NumberOfBytes = 8;	// = Cantidad De Registros + 2 (el comando WriteRegister requiere 2 bytes)
-	Tx_spi[0] = ADS1294_WREG_1 | ADS1294_GPIO;	// Escribo registros a partir del registro GPIO
-	Tx_spi[1] = ADS1294_WREG_2 | (6 - 1);	// Voy a escribir 6 registros
-	Tx_spi[2] = GPIO_DEFAULT;
-	Tx_spi[3] = PACE_DEFAULT;
-	Tx_spi[4] = RESP_DEFAULT;
-	Tx_spi[5] = CONFIG4_DEFAULT;
-	Tx_spi[6] = WCT1_DEFAULT;
-	Tx_spi[7] = WCT2_DEFAULT;
-	if ( SPIDEV1_transfer(Tx_spi, NULL, NumberOfBytes) == 0 )
+	Txc[0] = ADS1294_WREG_1 | ADS1294_GPIO;	// Escribo registros a partir del registro GPIO
+	Txc[1] = ADS1294_WREG_2 | (6 - 1);	// Voy a escribir 6 registros
+	Txc[2] = GPIO_DEFAULT;
+	Txc[3] = PACE_DEFAULT;
+	Txc[4] = RESP_DEFAULT;
+	Txc[5] = CONFIG4_DEFAULT;
+	Txc[6] = WCT1_DEFAULT;
+	Txc[7] = WCT2_DEFAULT;
+	if ( SPIDEV1_transfer(Txc, NULL, NumberOfBytes) == 0 )
     	printf("(ADS1294_init)spidev1.0: Transaction 3 Complete\r\n");
     else
     	printf("(ADS1294_init)spidev1.0: Transaction 3 Failed\r\n");
