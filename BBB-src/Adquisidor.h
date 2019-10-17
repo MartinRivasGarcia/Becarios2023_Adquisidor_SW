@@ -28,7 +28,7 @@ void ADS1294_init(void);
 #define SPI_MODE1set	1	// SPI settings are CPOL = 0 and CPHA = 1
 
 //-----  CONFIG1 Register  ---------//
-#define CONFIG1_DEFAULT		0xC0	// High Resolution Mode = ON, Multiple ReadBack = ON, CLK_OUT = OFF, Output Data rate = 32kSPS
+#define CONFIG1_DEFAULT		0xC1	// High Resolution Mode = ON, Multiple ReadBack = ON, CLK_OUT = OFF, Output Data rate = 16kSPS
 #define OUTPUT_DR_32K		0		// CONFIG1 Reg Bits2..0 = Output Data rate (en High Resolution Mode habilitado por defecto)
 #define OUTPUT_DR_16K		1
 #define OUTPUT_DR_8K		2

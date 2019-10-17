@@ -14,15 +14,15 @@
 #include "Adquisidor.h"
 #include "SPI.h"
 
-uint8_t Tx_spi[SPIDEV_BYTES_NUM];
-uint8_t Rx_spi[SPIDEV_BYTES_NUM];
+int DRDYdir, DRDYvalue, DRDYedge;
 uint32_t ADS1294_Status;
+uint8_t ADS1294_transfer_length = 15; // Por defecto elijo 16KSPS => 15 bytes
 
 int32_t main(int32_t argc, int8_t const *argv[])
 {
     unsigned char Rx_aux = 0;
 
-	if ( Config_BBB_SPI_Pins() < 0)	//Configuro los pines de la BBB para SPI
+	if ( Config_BBB_Pins() < 0)	//Configuro los pines de la BBB para SPI y para DRDY
 		return 0;
 
 	// Intento tomar el driver de SPI de la beagle
@@ -37,8 +37,6 @@ int32_t main(int32_t argc, int8_t const *argv[])
     //ADS1294_SendCommand(ADS1294_SDATAC);
     
 	//ADS1294_init();	// Inicializo los registros del ADS1294 con sus valores por defecto
-
-    //ADS1294_SendCommand(ADS1294_SDATAC);
 
     ADS1294_SendCommand(ADS1294_RESET);	// Primero reseteo el ADC
 	usleep(100);						// Despues de un comando de reset hay que esperar aprox 9us (18 tCLK)
@@ -61,12 +59,13 @@ int32_t main(int32_t argc, int8_t const *argv[])
 }
 
 /**
- * @brief      Utilizo la funcion system para correr el comando de consola config-pin y setear los pines de la BBB como SPI
+ * @brief      Utilizo config-pin para elegir la funcionalidad de los pines de la BBB como SPI. Ademas configuro un GPIO para DRDY.
  *
  * @return     Devuelve -1 en caso de error. Devuelve 0 en configuracion exitosa.
  */
-int32_t Config_BBB_SPI_Pins()
+int32_t Config_BBB_Pins()
 {
+	/* Pines para SPI */
 	if( system("config-pin P9.17 spi_cs") < 0 )
 	{
 		printf("Error corriendo en consola el comando: config-pin P9.17 spi_cs\n");
@@ -87,12 +86,51 @@ int32_t Config_BBB_SPI_Pins()
 		printf("Error corriendo en consola el comando: config-pin P9.22 spi_sclk\n");
 		return -1;
 	}
+
+	/* Pin GPIO para DRDY, DataReady */
+	DRDYdir = open("/sys/class/gpio/gpio49/direction",O_RDWR);
+	if(DRDYdir < 0)
+	{
+		printf("Error abirendo gpio49 direction\n");
+		return -1;
+	}
+	if( write(DRDYdir,"IN",3) < 0 )
+	{
+		printf("Error escribiendo gpio49 direction\n");
+		close(DRDYdir);
+		return -1;
+	}
+	DRDYvalue = open("/sys/class/gpio/gpio49/value",O_RDWR);
+	if(gpio_v < 0)
+	{
+		printf("Error abirendo gpio49 value\n");
+		close(DRDYdir);
+		return -1;
+	}
 	return 0;
+}
+
+/**
+ * @brief      Selecciona la tasa de muestras que quiero del ADC, cambiando el campo DR del registro CONFIG1
+ *
+ * @param[in]  DR    Indica la nueva tasa de muestras deseada
+ */
+void ADS1294_Set_DataRate(uint8_t DR)
+{
+	uint8_t config = CONFIG1_DEFAULT;
+	config = (config & ~3) | DR;
+	ADS1294_WriteRegister(CONFIG1,config);
+	if(DR == OUTPUT_DR_32K)
+		ADS1294_transfer_length = 11;
+	else
+		ADS1294_transfer_length = 15;
 }
 
 
 void ADS1294_Read(uint8_t * Rx, uint8_t NumberOfBytes)
 {
+	/* Siempre el ADC envia primero 24bits de STATUS. Luego las muestras de cada canal de forma consecutiva.
+	 * Segun datasheet hoja 53: para 64 y 32 KSPS -> 16 bits/canal, de 8KSPS para abajo -> 24 bits/canal */
 	uint8_t TxDummy[15] = { 0 };	// Leo directamente con la transferencia SPI, y el ADC indica mantener MOSI en bajo
 
 	//# TODO: Leer pin de DRDY #//
