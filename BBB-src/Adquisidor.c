@@ -36,19 +36,18 @@ int32_t main(int32_t argc, int8_t const *argv[])
 
     //ADS1294_SendCommand(ADS1294_SDATAC);
     
-	//ADS1294_init();	// Inicializo los registros del ADS1294 con sus valores por defecto
+	ADS1294_init();	// Inicializo los registros del ADS1294 con sus valores por defecto
 
-    ADS1294_SendCommand(ADS1294_RESET);	// Primero reseteo el ADC
-	usleep(100);						// Despues de un comando de reset hay que esperar aprox 9us (18 tCLK)
+    //ADS1294_SendCommand(ADS1294_RESET);	// Primero reseteo el ADC
+	//usleep(100);						// Despues de un comando de reset hay que esperar aprox 9us (18 tCLK)
    
-    ADS1294_SendCommand(ADS1294_SDATAC);
+    //ADS1294_SendCommand(ADS1294_SDATAC);
 
-    Rx_aux = ADS1294_ReadRegister(ADS1294_CONFIG1);
+    /*Rx_aux = ADS1294_ReadRegister(ADS1294_CONFIG1);
     printf("Valor de Registro CONFIG1: %u\n",Rx_aux);
     ADS1294_WriteRegister(ADS1294_CONFIG1,CONFIG1_DEFAULT);
     Rx_aux = ADS1294_ReadRegister(ADS1294_CONFIG1);
-    
-    printf("Valor de Registro CONFIG1: %u\n",Rx_aux);    
+    printf("Valor de Registro CONFIG1: %u\n",Rx_aux);    */
 
 
 	//ADS1294_SendCommand(ADS1294_START);	// Requiere que el pin START este en estado bajo
@@ -94,7 +93,7 @@ int32_t Config_BBB_Pins()
 		printf("Error abirendo gpio49 direction\n");
 		return -1;
 	}
-	if( write(DRDYdir,"IN",3) < 0 )
+	if( write(DRDYdir,"in",3) < 0 )
 	{
 		printf("Error escribiendo gpio49 direction\n");
 		close(DRDYdir);
@@ -118,45 +117,67 @@ int32_t Config_BBB_Pins()
 void ADS1294_Set_DataRate(uint8_t DR)
 {
 	uint8_t config = CONFIG1_DEFAULT;
-	config = (config & ~3) | DR;
+	config = (config & ~7) | DR;
 	ADS1294_WriteRegister(CONFIG1,config);
 	if(DR == OUTPUT_DR_32K)
-		ADS1294_transfer_length = 11;
+		ADS1294_transfer_length = 11; // Para 32KSPS el ADC manda 16bits por canal
 	else
-		ADS1294_transfer_length = 15;
+		ADS1294_transfer_length = 15; // Para tasas menores el ADC manda 24bits por canal
 }
 
 
-void ADS1294_Read(uint8_t * Rx, uint8_t NumberOfBytes)
+/**
+ * @brief      Lee la nueva conversion del ADC. Usar en modo Read Data Continuously mode (RDATAC)
+ *
+ * @param      Rx    The receive
+ */
+void ADS1294_Read(uint8_t * Rx)
 {
 	/* Siempre el ADC envia primero 24bits de STATUS. Luego las muestras de cada canal de forma consecutiva.
 	 * Segun datasheet hoja 53: para 64 y 32 KSPS -> 16 bits/canal, de 8KSPS para abajo -> 24 bits/canal */
-	uint8_t TxDummy[15] = { 0 };	// Leo directamente con la transferencia SPI, y el ADC indica mantener MOSI en bajo
+	uint8_t TxDummy_LDR[15] = { 0 };	// Leo directamente con la transferencia SPI, y el ADC indica mantener MOSI en bajo
+	uint8_t TxDummy_HDR[11] = { 0 };	// Leo directamente con la transferencia SPI, y el ADC indica mantener MOSI en bajo
+	uint8_t DRDY;
 
-	//# TODO: Leer pin de DRDY #//
+	if( read(DRDYvalue,&DRDY,1) < 0)
+	{
+		printf("Error leyendo DRDY\n");
+		return;
+	}	
 
-	//if(DRDY == LOW)
-	//{
-		if ( SPIDEV1_transfer(TxDummy, Rx, NumberOfBytes) == 0 )
+	if(DRDY == LOW)
+	{
+		if ( SPIDEV1_transfer(TxDummy, Rx, ADS1294_transfer_length) == 0 )
     		printf("(ADS1294_WriteRegister)spidev1.0: Transaction Complete\r\n");
     	else
     		printf("(ADS1294_WriteRegister)spidev1.0: Transaction Failed\r\n");
-	//}
+	}
 }
 
-void ADS1294_SingleRead(uint8_t * Rx, uint8_t NumberOfBytes)
+/**
+ * @brief      Realiza una lectura de datos al ADC de forma manual
+ *
+ * @param      Rx    Buffer donde se almacena la lectura del ADC
+ */
+void ADS1294_SingleRead(uint8_t * Rx)
 {
-	uint8_t TxDummy[16] = { 0 };	// El ADC indica mantener MOSI en bajo mientras se leen datos
+	uint8_t TxDummy_LDR[16] = { 0 };	// El ADC indica mantener MOSI en bajo mientras se leen datos
+	uint8_t TxDummy_HDR[12] = { 0 };
 	TxDummy[0] = ADS1294_RDATA;	// El primer byte es el comando de lectura
-	//# TODO: Leer pin de DRDY #//
+	
+	if( read(DRDYvalue,&DRDY,1) < 0)
+	{
+		printf("Error leyendo DRDY\n");
+		return;
+	}
 
-	//if(DRDY == LOW)
-	//{
-		if ( SPIDEV1_transfer(TxDummy, Rx, NumberOfBytes + 1) == 0 )
+	if(DRDY == LOW)
+	{
+		if ( SPIDEV1_transfer(TxDummy, Rx, ADS1294_transfer_length + 1) == 0 )
     		printf("(ADS1294_WriteRegister)spidev1.0: Transaction Complete\r\n");
     	else
     		printf("(ADS1294_WriteRegister)spidev1.0: Transaction Failed\r\n");
-	//}
+	}
 }
 
 /**
@@ -251,7 +272,7 @@ void ADS1294_init(void)
 	Txb[3] = RLD_SENSN_DEFAULT;
 	Txb[4] = LOFF_SENSP_DEFAULT;
 	Txb[5] = LOFF_SENSN_DEFAULT;
-	Txb[6] = LOFF_FLIP_DEFAULT;	// Inicialmente configuro los 4 canales por igual
+	Txb[6] = LOFF_FLIP_DEFAULT;
 	if ( SPIDEV1_transfer(Txb, NULL, NumberOfBytes) == 0 )
     	printf("(ADS1294_init)spidev1.0: Transaction 2 Complete\r\n");
     else
