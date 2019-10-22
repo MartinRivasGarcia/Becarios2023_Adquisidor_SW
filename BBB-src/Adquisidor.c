@@ -11,6 +11,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "Adquisidor.h"
 #include "SPI.h"
 
@@ -43,11 +46,11 @@ int32_t main(int32_t argc, int8_t const *argv[])
    
     //ADS1294_SendCommand(ADS1294_SDATAC);
 
-    /*Rx_aux = ADS1294_ReadRegister(ADS1294_CONFIG1);
-    printf("Valor de Registro CONFIG1: %u\n",Rx_aux);
-    ADS1294_WriteRegister(ADS1294_CONFIG1,CONFIG1_DEFAULT);
+    /*Rx_aux = ADS1294_ReadRegister(ADS1294_CONFIG3);
+    printf("Valor de Registro CONFIG1: %u\n",Rx_aux);*/
+    ADS1294_WriteRegister(ADS1294_CONFIG3,CONFIG3_DEFAULT|(1<<7));
     Rx_aux = ADS1294_ReadRegister(ADS1294_CONFIG1);
-    printf("Valor de Registro CONFIG1: %u\n",Rx_aux);    */
+    printf("Valor de Registro CONFIG1: %u\n",Rx_aux);    /**/
 
 
 	//ADS1294_SendCommand(ADS1294_START);	// Requiere que el pin START este en estado bajo
@@ -100,7 +103,7 @@ int32_t Config_BBB_Pins()
 		return -1;
 	}
 	DRDYvalue = open("/sys/class/gpio/gpio49/value",O_RDWR);
-	if(gpio_v < 0)
+	if(DRDYvalue < 0)
 	{
 		printf("Error abirendo gpio49 value\n");
 		close(DRDYdir);
@@ -118,7 +121,7 @@ void ADS1294_Set_DataRate(uint8_t DR)
 {
 	uint8_t config = CONFIG1_DEFAULT;
 	config = (config & ~7) | DR;
-	ADS1294_WriteRegister(CONFIG1,config);
+	ADS1294_WriteRegister(ADS1294_CONFIG1,config);
 	if(DR == OUTPUT_DR_32K)
 		ADS1294_transfer_length = 11; // Para 32KSPS el ADC manda 16bits por canal
 	else
@@ -147,7 +150,7 @@ void ADS1294_Read(uint8_t * Rx)
 
 	if(DRDY == LOW)
 	{
-		if ( SPIDEV1_transfer(TxDummy, Rx, ADS1294_transfer_length) == 0 )
+		if ( SPIDEV1_transfer(TxDummy_HDR, Rx, ADS1294_transfer_length) == 0 )
     		printf("(ADS1294_WriteRegister)spidev1.0: Transaction Complete\r\n");
     	else
     		printf("(ADS1294_WriteRegister)spidev1.0: Transaction Failed\r\n");
@@ -163,7 +166,9 @@ void ADS1294_SingleRead(uint8_t * Rx)
 {
 	uint8_t TxDummy_LDR[16] = { 0 };	// El ADC indica mantener MOSI en bajo mientras se leen datos
 	uint8_t TxDummy_HDR[12] = { 0 };
-	TxDummy[0] = ADS1294_RDATA;	// El primer byte es el comando de lectura
+	uint8_t DRDY;
+	TxDummy_LDR[0] = ADS1294_RDATA;	// El primer byte es el comando de lectura
+	TxDummy_HDR[0] = ADS1294_RDATA;	// El primer byte es el comando de lectura
 	
 	if( read(DRDYvalue,&DRDY,1) < 0)
 	{
@@ -173,7 +178,7 @@ void ADS1294_SingleRead(uint8_t * Rx)
 
 	if(DRDY == LOW)
 	{
-		if ( SPIDEV1_transfer(TxDummy, Rx, ADS1294_transfer_length + 1) == 0 )
+		if ( SPIDEV1_transfer(TxDummy_HDR, Rx, ADS1294_transfer_length + 1) == 0 )
     		printf("(ADS1294_WriteRegister)spidev1.0: Transaction Complete\r\n");
     	else
     		printf("(ADS1294_WriteRegister)spidev1.0: Transaction Failed\r\n");
