@@ -10,6 +10,8 @@ https://deeplyembedded.org/spi-library-beaglebone/
 https://groups.google.com/forum/#!topic/beagleboard/RShjePl0noY
 https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/spi/spidev.h
 
+######## Make #########
+find . -exec touch {} \; //En consola para arreglar los timestamps
 ------------------------------------------------------------------------------------
 
 ######## beaglebone-universal-io ( Seteo de Pines ) ########

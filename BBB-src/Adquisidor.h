@@ -26,6 +26,7 @@ void ADS1294_init(void);
 
 //-----  Beagle Bone Black  ---------//
 #define SPI_MODE1set	1	// SPI settings are CPOL = 0 and CPHA = 1
+#define DATAREADY 48
 
 //-----  CONFIG1 Register  ---------//
 #define CONFIG1_DEFAULT		0xC1	// High Resolution Mode = ON, Multiple ReadBack = ON, CLK_OUT = OFF, Output Data rate = 16kSPS

@@ -23,7 +23,9 @@ uint8_t ADS1294_transfer_length = 15; // Por defecto elijo 16KSPS => 15 bytes
 
 int32_t main(int32_t argc, int8_t const *argv[])
 {
+	int i=0;
     unsigned char Rx_aux = 0;
+    uint8_t RxBuffer[16];
 
 	if ( Config_BBB_Pins() < 0)	//Configuro los pines de la BBB para SPI y para DRDY
 		return 0;
@@ -48,13 +50,19 @@ int32_t main(int32_t argc, int8_t const *argv[])
 
     /*Rx_aux = ADS1294_ReadRegister(ADS1294_CONFIG3);
     printf("Valor de Registro CONFIG1: %u\n",Rx_aux);*/
-    ADS1294_WriteRegister(ADS1294_CONFIG3,CONFIG3_DEFAULT|(1<<7));
-    Rx_aux = ADS1294_ReadRegister(ADS1294_CONFIG1);
-    printf("Valor de Registro CONFIG1: %u\n",Rx_aux);    /**/
+    ADS1294_WriteRegister(ADS1294_CONFIG4,CONFIG4_DEFAULT|SINGLE_SHOT);
+    //Rx_aux = ADS1294_ReadRegister(ADS1294_CONFIG1);
+    //printf("Valor de Registro CONFIG1: %u\n",Rx_aux);    /**/
 
 
-	//ADS1294_SendCommand(ADS1294_START);	// Requiere que el pin START este en estado bajo
-
+	ADS1294_SendCommand(ADS1294_START);	// Requiere que el pin START este en estado bajo
+	usleep(100);
+	ADS1294_SingleRead(RxBuffer);
+	
+	printf("Trama recibida: ");
+	for(i = 0; i < 16; i++)
+		printf("%u ", RxBuffer[i]);
+	printf("\n");
 	//Leer();	// Reubicar
 
 	return 0;
@@ -132,7 +140,7 @@ void ADS1294_Set_DataRate(uint8_t DR)
 /**
  * @brief      Lee la nueva conversion del ADC. Usar en modo Read Data Continuously mode (RDATAC)
  *
- * @param      Rx    The receive
+ * @param      Rx    Buffer donde se carga la lectura del ADC
  */
 void ADS1294_Read(uint8_t * Rx)
 {
@@ -148,12 +156,20 @@ void ADS1294_Read(uint8_t * Rx)
 		return;
 	}	
 
-	if(DRDY == LOW)
+	if(DRDY == DATAREADY)
 	{
-		if ( SPIDEV1_transfer(TxDummy_HDR, Rx, ADS1294_transfer_length) == 0 )
-    		printf("(ADS1294_WriteRegister)spidev1.0: Transaction Complete\r\n");
-    	else
-    		printf("(ADS1294_WriteRegister)spidev1.0: Transaction Failed\r\n");
+		if(ADS1294_transfer_length == 15)
+		{
+			if ( SPIDEV1_transfer(TxDummy_HDR, Rx, ADS1294_transfer_length) == 0 )
+    			printf("(ADS1294_Read)spidev1.0: Transaction Complete\r\n");
+    		else
+    			printf("(ADS1294_Read)spidev1.0: Transaction Failed\r\n");
+		}
+		else if(ADS1294_transfer_length == 11)
+			if ( SPIDEV1_transfer(TxDummy_LDR, Rx, ADS1294_transfer_length) == 0 )
+    			printf("(ADS1294_Read)spidev1.0: Transaction Complete\r\n");
+    		else
+    			printf("(ADS1294_Read)spidev1.0: Transaction Failed\r\n");
 	}
 }
 
@@ -164,8 +180,9 @@ void ADS1294_Read(uint8_t * Rx)
  */
 void ADS1294_SingleRead(uint8_t * Rx)
 {
-	uint8_t TxDummy_LDR[16] = { 0 };	// El ADC indica mantener MOSI en bajo mientras se leen datos
-	uint8_t TxDummy_HDR[12] = { 0 };
+	// El ADC indica mantener MOSI en bajo mientras se leen datos => transmito todos ceros.
+	uint8_t TxDummy_LDR[16] = { 0 }; //Buffer para low data rate
+	uint8_t TxDummy_HDR[12] = { 0 }; //Buffer para high data rate
 	uint8_t DRDY;
 	TxDummy_LDR[0] = ADS1294_RDATA;	// El primer byte es el comando de lectura
 	TxDummy_HDR[0] = ADS1294_RDATA;	// El primer byte es el comando de lectura
@@ -175,13 +192,21 @@ void ADS1294_SingleRead(uint8_t * Rx)
 		printf("Error leyendo DRDY\n");
 		return;
 	}
-
-	if(DRDY == LOW)
+	printf("DRDY: %u\n",DRDY);
+	if(DRDY == DATAREADY)
 	{
-		if ( SPIDEV1_transfer(TxDummy_HDR, Rx, ADS1294_transfer_length + 1) == 0 )
-    		printf("(ADS1294_WriteRegister)spidev1.0: Transaction Complete\r\n");
-    	else
-    		printf("(ADS1294_WriteRegister)spidev1.0: Transaction Failed\r\n");
+		if(ADS1294_transfer_length == 15)
+		{
+			if ( SPIDEV1_transfer(TxDummy_HDR, Rx, ADS1294_transfer_length + 1) == 0 )
+    			printf("(ADS1294_SingleRead)spidev1.0: Transaction Complete\r\n");
+    		else
+    			printf("(ADS1294_SingleRead)spidev1.0: Transaction Failed\r\n");
+		}
+		else if(ADS1294_transfer_length == 11)
+			if ( SPIDEV1_transfer(TxDummy_LDR, Rx, ADS1294_transfer_length + 1) == 0 )
+    			printf("(ADS1294_SingleRead)spidev1.0: Transaction Complete\r\n");
+    		else
+    			printf("(ADS1294_SingleRead)spidev1.0: Transaction Failed\r\n");
 	}
 }
 
@@ -251,8 +276,9 @@ void ADS1294_init(void)
 
 	ADS1294_SendCommand(ADS1294_RESET);	// Primero reseteo el ADC
 	usleep(100);						// Despues de un comando de reset hay que esperar aprox 9us (18 tCLK)
-    ADS1294_SendCommand(ADS1294_SDATAC);
-	// Inicialmente solo escribo los registros y no leo nada. Chequear que anda con NULL (deberia)
+    ADS1294_SendCommand(ADS1294_SDATAC); //Paro el modo continuo de conversion que es el default del ADC
+
+	// Inicialmente solo escribo los registros y no leo nada.
 	// Necesito 10 bytes
 	NumberOfBytes = 10;	// = Cantidad De Registros + 2 (el comando WriteRegister requiere 2 bytes)
 	Txa[0] = ADS1294_WREG_1 | ADS1294_CONFIG1;	// Escribo registros a partir del registro CONFIG1
