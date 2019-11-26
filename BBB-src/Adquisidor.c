@@ -18,14 +18,17 @@
 #include "SPI.h"
 
 int DRDYdir, DRDYvalue, DRDYedge;
-uint32_t ADS1294_Status;
+uint8_t ADS1294_Status[3];
 uint8_t ADS1294_transfer_length = 15; // Por defecto elijo 16KSPS => 15 bytes
+
+#define SPI_TL_DEBUG 64
 
 int32_t main(int32_t argc, int8_t const *argv[])
 {
 	int i=0;
     unsigned char Rx_aux = 0;
     uint8_t RxBuffer[16];
+    uint32_t ChannelData[4];
 
 	if ( Config_BBB_Pins() < 0)	//Configuro los pines de la BBB para SPI y para DRDY
 		return 0;
@@ -54,17 +57,40 @@ int32_t main(int32_t argc, int8_t const *argv[])
     //Rx_aux = ADS1294_ReadRegister(ADS1294_CONFIG1);
     //printf("Valor de Registro CONFIG1: %u\n",Rx_aux);    /**/
 
+    //ADS1294_Set_DataRate(OUTPUT_DR_8K);
 
 	ADS1294_SendCommand(ADS1294_START);	// Requiere que el pin START este en estado bajo
 	usleep(100);
 	ADS1294_SingleRead(RxBuffer);
 	
 	printf("Trama recibida: ");
-	for(i = 0; i < 16; i++)
-		printf("%u ", RxBuffer[i]);
+	/*for(i = 1; i < 32; i++)
+		printf("%u ", RxBuffer[i]); // %#X
+	printf("\n");*/
+
+	for(i = 1; i < 16; i+=3)
+		printf("0x%06X ",(int32_t)((RxBuffer[i]<<16) | (RxBuffer[i+1]<<8) | (RxBuffer[i+2])) );
 	printf("\n");
+
+	ADS1294_Status[0] = RxBuffer[1];
+	ADS1294_Status[1] = RxBuffer[2];
+	ADS1294_Status[2] = RxBuffer[3];
+
+	ChannelData[0] = (int32_t)((RxBuffer[4]<<16) | (RxBuffer[5]<<8) | (RxBuffer[6]));
+	printf("Canal 1: %d\n", ChannelData[0]);
+
+	ChannelData[1] = (int32_t)((RxBuffer[7]<<16) | (RxBuffer[8]<<8) | (RxBuffer[9]));
+	printf("Canal 2: %d\n", ChannelData[1]);
+
+	ChannelData[2] = (int32_t)((RxBuffer[10]<<16) | (RxBuffer[11]<<8) | (RxBuffer[12]));
+	printf("Canal 3: %d\n", ChannelData[2]);
+
+	ChannelData[3] = (int32_t)((RxBuffer[13]<<16) | (RxBuffer[14]<<8) | (RxBuffer[15]));
+	printf("Canal 4: %d\n", ChannelData[3]);
 	//Leer();	// Reubicar
 
+	close(DRDYdir);
+	close(DRDYvalue);
 	return 0;
 }
 
@@ -73,7 +99,7 @@ int32_t main(int32_t argc, int8_t const *argv[])
  *
  * @return     Devuelve -1 en caso de error. Devuelve 0 en configuracion exitosa.
  */
-int32_t Config_BBB_Pins()
+int32_t Config_BBB_Pins(void)
 {
 	/* Pines para SPI */
 	if( system("config-pin P9.17 spi_cs") < 0 )
@@ -146,8 +172,8 @@ void ADS1294_Read(uint8_t * Rx)
 {
 	/* Siempre el ADC envia primero 24bits de STATUS. Luego las muestras de cada canal de forma consecutiva.
 	 * Segun datasheet hoja 53: para 64 y 32 KSPS -> 16 bits/canal, de 8KSPS para abajo -> 24 bits/canal */
-	uint8_t TxDummy_LDR[15] = { 0 };	// Leo directamente con la transferencia SPI, y el ADC indica mantener MOSI en bajo
-	uint8_t TxDummy_HDR[11] = { 0 };	// Leo directamente con la transferencia SPI, y el ADC indica mantener MOSI en bajo
+	uint8_t TxDummy_LDR[11] = { 0 };	// Leo directamente con la transferencia SPI, y el ADC indica mantener MOSI en bajo
+	uint8_t TxDummy_HDR[15] = { 0 };	// Leo directamente con la transferencia SPI, y el ADC indica mantener MOSI en bajo
 	uint8_t DRDY;
 
 	if( read(DRDYvalue,&DRDY,1) < 0)
@@ -181,8 +207,8 @@ void ADS1294_Read(uint8_t * Rx)
 void ADS1294_SingleRead(uint8_t * Rx)
 {
 	// El ADC indica mantener MOSI en bajo mientras se leen datos => transmito todos ceros.
-	uint8_t TxDummy_LDR[16] = { 0 }; //Buffer para low data rate
-	uint8_t TxDummy_HDR[12] = { 0 }; //Buffer para high data rate
+	uint8_t TxDummy_LDR[12] = { 0 }; //Buffer para low data rate
+	uint8_t TxDummy_HDR[16] = { 0 }; //Buffer para high data rate
 	uint8_t DRDY;
 	TxDummy_LDR[0] = ADS1294_RDATA;	// El primer byte es el comando de lectura
 	TxDummy_HDR[0] = ADS1294_RDATA;	// El primer byte es el comando de lectura

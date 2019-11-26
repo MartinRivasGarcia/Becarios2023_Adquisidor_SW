@@ -31,7 +31,7 @@ SOFTWARE.
 #include<stdint.h>
 
 /* Generic Definitions */
-#define SPIDEV_BYTES_NUM                 10
+#define SPIDEV_BYTES_NUM                 16
 #define SPIDEV_DATA_BITS_NUM             8
 #define SPIDEV_DELAY_US	                 0
 #define SPI_SS_HIGH                      1

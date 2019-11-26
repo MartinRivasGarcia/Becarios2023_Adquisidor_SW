@@ -16,6 +16,7 @@ void ADS1294_SendCommand(uint8_t);
 void ADS1294_WriteRegister(uint8_t, uint8_t);
 uint8_t ADS1294_ReadRegister(uint8_t);
 void ADS1294_init(void);
+void ADS1294_Set_DataRate(uint8_t);
 
 
 //-----  General  ---------//
