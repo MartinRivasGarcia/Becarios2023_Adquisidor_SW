@@ -51,8 +51,8 @@ int32_t main(int32_t argc, int8_t const *argv[])
    
     //ADS1294_SendCommand(ADS1294_SDATAC);
 
-    /*Rx_aux = ADS1294_ReadRegister(ADS1294_CONFIG3);
-    printf("Valor de Registro CONFIG1: %u\n",Rx_aux);*/
+    Rx_aux = ADS1294_ReadRegister(ADS1294_CONFIG3);
+    printf("Valor de Registro CONFIG1: %u\n",Rx_aux);
     ADS1294_WriteRegister(ADS1294_CONFIG4,CONFIG4_DEFAULT|SINGLE_SHOT);
     //Rx_aux = ADS1294_ReadRegister(ADS1294_CONFIG1);
     //printf("Valor de Registro CONFIG1: %u\n",Rx_aux);    /**/
