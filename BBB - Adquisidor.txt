@@ -87,5 +87,17 @@ echo 1 > /proc/sys/net/ipv4/ip_forward
 echo "nameserver 8.8.8.8" >> /etc/resolv.conf
 
 #Desde Windows:
-
 -------------------------------------------------------------------------------------
+#Anotaciones Martin
+Conectarse con ssh a BeagleBone:
+
+1) Desde el cmd: ssh debian@192.168.7.2
+2) Ingresar password: temppwd
+3) Hacer git clone en caso de ser necesario; nosotros ya tenemos cargado el codigo en la placa.
+4) Hacer make
+5) Correr como: "sudo./Adquisidor.o"
+6) Cierro ssh con "exit"
+
+Links utiles:
+Ejemplo de uso en un proyecto: https://upcommons.upc.edu/bitstream/handle/2117/98951/PFC.pdf
+ADS1294 datasheet :
