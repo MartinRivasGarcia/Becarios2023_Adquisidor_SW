@@ -100,4 +100,5 @@ Conectarse con ssh a BeagleBone:
 
 Links utiles:
 Ejemplo de uso en un proyecto: https://upcommons.upc.edu/bitstream/handle/2117/98951/PFC.pdf
-ADS1294 datasheet :
+ADS1294 datasheet : https://www.ti.com/lit/ds/symlink/ads1294.pdf?ts=1686053115605&ref_url=https%253A%252F%252Fwww.ti.com%252Fproduct%252FADS1294
+Ejemplo en arduino : https://github.com/adamfeuer/ADS129x-tools
