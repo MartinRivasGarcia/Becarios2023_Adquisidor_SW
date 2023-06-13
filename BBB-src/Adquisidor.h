@@ -47,6 +47,18 @@ void ADS1294_Set_DataRate(uint8_t);
 #define V_REF_2_4V			0x20	// Bit5 de CONFIG3 en 1 => VREFP en 2.4V
 #define V_REF_4V			0x00	// Bit5 de CONFIG3 en 0 => VREFP en 4V
 
+//-----  Comand definitions  ---------//
+#define ADS_CMD_WAKEUP 0x02 /*! Wake-up from standby mode Opcode */
+#define ADS_CMD_STANDBY 0x04 /*! Enter standby mode Opcode */
+#define ADS_CMD_RESET 0x06 /*! Device registers Reset Opcode */
+#define ADS_CMD_START 0x08 /*! Start/restart conversions Opcode */
+#define ADS_CMD_STOP 0X0A /*! Stop conversions Opcode */
+#define ADS_CMD_RDATAC 0X10 /*! Enable Read Data Continuous mode */
+#define ADS_CMD_SDATAC 0x11 /*! Stop Read Data Continuously mode */
+#define ADS_CMD_RDATA 0x12 /*! Read data by command */
+#define ADS_CMD_RREG 0x20 /*! Read Configuration Registers */
+#define ADS_CMD_WREG 0x40 /*! Write Configuration Registers */
+
 //-----  CHnSET Register  ---------//
 #define CHnSET_DEFAULT		0x10	// Channel n =  ON, PGA_GAIN = 1, ChannelMUX = Normal input
 #define PD_CHANNEL			0x80	// Bit7 de CHnSET en 0 => Normal operation, en 1 => Channel power-down
@@ -93,6 +105,56 @@ void ADS1294_Set_DataRate(uint8_t);
 #define CONFIG4_DEFAULT		0x00	// Continuous Conversion = ON, WCT to RLD connection = OFF, Lead-off comparators disabled
 #define SINGLE_SHOT			0x08	// Bit3 de CONFIG4 en 1 => Single-shot mode, en 0 Continuous conversion mode
 
+/*D Control Register - Address: 0x00 */
+#define ADS1294 0b10010000 /*!< Revision ID for ADS1294 */
 
 
+/* (1) Configuration Register 1 - Address: 0x01 */
+#define M_HR 0b10000000 /*!< Mode High-Resolution */
+#define M_LP 0b00000000 /*!< Mode Low-Power */
+#define MULTI_READ 0b01000000 /*!< Multiple Read Back Mode */
+#define CLK_EN 0b00100000 /*!< Oscil. clock output enable */
+#define DR_HR_500 0b00000110 /*!< M. HR, Oversamp.: 500 SPS */
+#define DR_HR_1K 0b00000101 /*!< M. HR, Oversamp.: 1K SPS */
+#define DR_HR_2K 0b00000100 /*!< M. HR, Oversamp.: 2K SPS */
+#define DR_HR_4K 0b00000011 /*!< M. HR, Oversamp.: 4K SPS */
+#define DR_HR_8K 0b00000010 /*!< M. HR, Oversamp.: 8K SPS */
+#define DR_HR_16K 0b00000001 /*!< M. HR, Oversamp.: 16K SPS */
+#define DR_HR_32K 0b00000000 /*!< M. HR, Oversamp.: 32K SPS */
+#define LP_HR_250 0b00000110 /*!< M. LP, Oversamp.: 250 SPS */
+#define LP_HR_500 0b00000101 /*!< M. HR, Oversamp.: 500 SPS */
+#define LP_HR_1K 0b00000100 /*!< M. HR, Oversamp.: 1K SPS */
+#define LP_HR_2K 0b00000011 /*!< M. HR, Oversamp.: 2K SPS */
+#define LP_HR_4K 0b00000010 /*!< M. HR, Oversamp.: 4K SPS */
+#define LP_HR_8K 0b00000001 /*!< M. HR, Oversamp.: 8K SPS */
+#define LP_HR_16K 0b00000000 /*!< M. HR, Oversamp.: 16K SPS */
 
+/* (2) Configuration Register 2 - Adress: 0x02*/
+#define INT_SIGNAL_TEST 0b00010000 /*!< Enable Internal Test Signal */
+#define EXT_SIGNAL_TEST 0b00000000 /*!< Enable External Test Signal */
+#define TEST_AMP_1 0b00000000 /*!< Test signal amplitud=1mV */
+#define TEST_AMP_2 0b00000100 /*!< Test signal amplitud=2mV */
+#define TEST_FREQ_1 0b00000000 /*!< Test signal frequency=1Hz */
+#define TEST_FREQ_2 0b00000001 /*!< Test signal frecuency=2Hz */
+#define TEST_FREQ_DC 0b00000011 /*!< Test signal DC */
+
+
+/* (5,6,7,8) Channel 1,2,3,4 Settings - Address: 0x05, 0x06, 0x07, 0x08 */
+#define POWER_DOWN 0b10000001
+#define GAIN_6 0b00000000 /*!< Channel PGA gain 6 */
+#define GAIN_1 0b00010000 /*!< Channel PGA gain 1 */
+#define GAIN_2 0b00100000 /*!< Channel PGA gain 2 */
+#define GAIN_3 0b00110000 /*!< Channel PGA gain 3 */
+#define GAIN_4 0b01000000 /*!< Channel PGA gain 4 */
+#define GAIN_8 0b01010000 /*!< Channel PGA gain 8 */
+#define GAIN_12 0b01100000 /*!< Channel PGA gain 12 */
+#define ELECTRODE 0b00000000 /*!< Channel Input: Electrode */
+#define INPUT_SHORTED 0b00000001 /*!< Channel Input: Input shorted */
+#define TEST_SIGNAL 0b00000101 /*!< Chanel Input: Test Signal */
+
+* (3) Configuration Register 3 - Adress: 0x03 */
+#define VREF_2V4 0b11000000 /*!< 2.4V reference */
+#define VREF_4V 0b11100000 /*!< 4V reference */
+#define RLD_EN 0b01001100 /*!< Enable RLD */
+/* (4) Lead-Off Control Register - Adress: 0x04 */
+#define LOFF_REG 0b00000000 /*!< Register State after reset */

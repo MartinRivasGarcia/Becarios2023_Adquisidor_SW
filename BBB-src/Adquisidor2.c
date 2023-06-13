@@ -1,4 +1,4 @@
-//Version original de Adquisidor.c
+//Modificacion de Adquisidor.c basandose en pfc.pdf -> faltaria ver para habilitar las interrupciones del spi
 /**
  *	Adquisidor.c
  * 	Autor: Nicolas Sidorczuk
@@ -46,9 +46,6 @@ int32_t main(int32_t argc, int8_t const *argv[])
     //ADS1294_SendCommand(ADS1294_SDATAC);
     
 	ADS1294_init();	// Inicializo los registros del ADS1294 con sus valores por defecto
-
-    //ADS1294_SendCommand(ADS1294_RESET);	// Primero reseteo el ADC
-	//usleep(100);						// Despues de un comando de reset hay que esperar aprox 9us (18 tCLK)
    
     //ADS1294_SendCommand(ADS1294_SDATAC);
 
@@ -60,6 +57,7 @@ int32_t main(int32_t argc, int8_t const *argv[])
 
     //ADS1294_Set_DataRate(OUTPUT_DR_8K);
 
+	ADS1294_SendCommand(ADS1294_RDATAC);
 	ADS1294_SendCommand(ADS1294_START);	// Requiere que el pin START este en estado bajo
 	usleep(100);
 	ADS1294_SingleRead(RxBuffer);
@@ -303,51 +301,22 @@ void ADS1294_init(void)
 
 	ADS1294_SendCommand(ADS1294_RESET);	// Primero reseteo el ADC
 	usleep(100);						// Despues de un comando de reset hay que esperar aprox 9us (18 tCLK)
+
+
     ADS1294_SendCommand(ADS1294_SDATAC); //Paro el modo continuo de conversion que es el default del ADC
 
-	// Inicialmente solo escribo los registros y no leo nada.
-	// Necesito 10 bytes
-	NumberOfBytes = 10;	// = Cantidad De Registros + 2 (el comando WriteRegister requiere 2 bytes)
-	Txa[0] = ADS1294_WREG_1 | ADS1294_CONFIG1;	// Escribo registros a partir del registro CONFIG1
-	Txa[1] = ADS1294_WREG_2 | (8 - 1);	// Voy a escribir 8 registros
-	Txa[2] = CONFIG1_DEFAULT;
-	Txa[3] = CONFIG2_DEFAULT;
-	Txa[4] = CONFIG3_DEFAULT;
-	Txa[5] = LOFF_DEFAULT;
-	Txa[6] = CHnSET_DEFAULT;	// Inicialmente configuro por igual los 4 canales
-	Txa[7] = CHnSET_DEFAULT;
-	Txa[8] = CHnSET_DEFAULT;
-	Txa[9] = CHnSET_DEFAULT;
-	if ( SPIDEV1_transfer(Txa, NULL, NumberOfBytes) == 0 )
-    	printf("(ADS1294_init)spidev1.0: Transaction 1 Complete\r\n");
-    else
-    	printf("(ADS1294_init)spidev1.0: Transaction 1 Failed\r\n");
+	ADS1294_SendCommand(ADS_CMD_WREG);
+	ADS1294_SendCommand(8);
+	ADS1294_SendCommand(ADS1294);		/*Id control*/
 
-    NumberOfBytes = 7;	// = Cantidad De Registros + 2 (el comando WriteRegister requiere 2 bytes)
-	Txb[0] = ADS1294_WREG_1 | ADS1294_RLD_SENSP;	// Escribo registros a partir del registro RLD_SENSP
-	Txb[1] = ADS1294_WREG_2 | (5 - 1);	// Voy a escribir 5 registros
-	Txb[2] = RLD_SENSP_DEFAULT;
-	Txb[3] = RLD_SENSN_DEFAULT;
-	Txb[4] = LOFF_SENSP_DEFAULT;
-	Txb[5] = LOFF_SENSN_DEFAULT;
-	Txb[6] = LOFF_FLIP_DEFAULT;
-	if ( SPIDEV1_transfer(Txb, NULL, NumberOfBytes) == 0 )
-    	printf("(ADS1294_init)spidev1.0: Transaction 2 Complete\r\n");
-    else
-    	printf("(ADS1294_init)spidev1.0: Transaction 2 Failed\r\n");
+	ADS1294_SendCommand(M_HR | DR_HR_1K); /* Configuration 1 */
+	ADS1294_SendCommand(EXT_SIGNAL_TEST | TEST_FREQ_2 | TEST_AMP_1 ); /* Configuration 2 */
+	ADS1294_SendCommand(VREF_2V4 | RLD_EN); /* Configuration 3 */
+	ADS1294_SendCommand(LOFF_REG); /* Lead-off Control */
+	ADS1294_SendCommand(ELECTRODE | GAIN_12); /* Channel 1 Settings */
+	ADS1294_SendCommand(ELECTRODE | GAIN_6); /* Channel 2 Settings */
+	ADS1294_SendCommand(ELECTRODE | GAIN_12); /* Channel 3 Settings */
+	ADS1294_SendCommand(POWER_DOWN | INPUT_SHORTED); /* Channel 4 Settings */
 
-    NumberOfBytes = 8;	// = Cantidad De Registros + 2 (el comando WriteRegister requiere 2 bytes)
-	Txc[0] = ADS1294_WREG_1 | ADS1294_GPIO;	// Escribo registros a partir del registro GPIO
-	Txc[1] = ADS1294_WREG_2 | (6 - 1);	// Voy a escribir 6 registros
-	Txc[2] = GPIO_DEFAULT;
-	Txc[3] = PACE_DEFAULT;
-	Txc[4] = RESP_DEFAULT;
-	Txc[5] = CONFIG4_DEFAULT;
-	Txc[6] = WCT1_DEFAULT;
-	Txc[7] = WCT2_DEFAULT;
-	if ( SPIDEV1_transfer(Txc, NULL, NumberOfBytes) == 0 )
-    	printf("(ADS1294_init)spidev1.0: Transaction 3 Complete\r\n");
-    else
-    	printf("(ADS1294_init)spidev1.0: Transaction 3 Failed\r\n");
 }
 
